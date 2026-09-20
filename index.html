@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Profesional de Sorteos & Rifas - Panel Admin Pro</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SheetJS (xlsx) for Exporting Real Excel Files -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- QRCode JS CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            },
+            status: {
+              free: '#22c55e',      // Verde
+              reserved: '#eab308',  // Amarillo
+              sold: '#ef4444',      // Rojo
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Glassmorphism & Custom Styling */
+    .glass-card {
+      background: rgba(30, 41, 59, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .glass-nav {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Number Button Transition */
+    .num-btn {
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .num-btn:active {
+      transform: scale(0.92);
+    }
+
+    /* Fixed Bottom Banner Animation */
+    .banner-slide-up {
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+    }
+
+    /* Critical layout padding for avoiding banner overlaps */
+    .grid-bottom-safe-area {
+      padding-bottom: 210px !important;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printableTicket, #printableTicket * {
+        visibility: visible;
+      }
+      #printableTicket {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-950 text-slate-100 font-sans antialiased flex flex-col selection:bg-brand-500 selection:text-white">
+
+  <!-- HEADER / NAVBAR -->
+  <header class="sticky top-0 z-30 glass-nav">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Logo & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="relative w-11 h-11 rounded-full overflow-hidden border-2 border-brand-500/50 shadow-lg shadow-brand-500/20 bg-slate-800 flex items-center justify-center shrink-0">
+          <img id="headerCompanyLogo" src="https://placehold.co/100x100/4f46e5/ffffff?text=LOGO" alt="Logo Compañía" class="w-full h-full object-cover">
+        </div>
+        <div>
+          <h1 id="headerRaffleTitle" class="font-display font-bold text-lg leading-tight text-white">Gran Sorteo Pro</h1>
+          <p id="headerRaffleSubtitle" class="text-xs text-slate-400">Selecciona tus números de la suerte</p>
+        </div>
+      </div>
+
+      <!-- Right Nav Actions -->
+      <div class="flex items-center space-x-3">
+        <!-- Direct Contact WhatsApp -->
+        <a id="directWhatsappBtn" href="#" target="_blank" class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-semibold transition border border-emerald-500/20">
+          <i class="fa-brands fa-whatsapp text-sm"></i>
+          <span>Soporte</span>
+        </a>
+
+        <!-- Admin Access Button -->
+        <button onclick="toggleAdminModal(true)" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-medium border border-indigo-500/30 transition shadow-sm">
+          <i class="fa-solid fa-user-shield text-brand-400"></i>
+          <span>Panel Admin</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN USER VIEW -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+    
+    <!-- BANNER ANNOUNCEMENT -->
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 mb-6 border border-indigo-500/20 shadow-2xl">
+      <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div>
+          <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-semibold mb-3">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>¡Sorteo Oficial Activo!</span>
+          </div>
+          <h2 id="mainRaffleTitle" class="font-display text-2xl sm:text-3xl font-extrabold text-white mb-2">SUPER SORTEO OFICIAL</h2>
+          <p id="mainRaffleDesc" class="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+            Elegí tus números preferidos, completá la reserva en segundos y enviala por WhatsApp para confirmación.
+          </p>
+        </div>
+
+        <!-- Dynamic Multi-Tier Pricing List Card -->
+        <div class="glass-card p-4 rounded-xl border border-slate-700/60 min-w-[280px]">
+          <span class="block text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2 flex items-center justify-between">
+            <span><i class="fa-solid fa-tags text-brand-400 mr-1"></i> Precios por Cantidad</span>
+            <span class="text-[10px] text-amber-400 font-semibold">(Máx. 20 por compra)</span>
+          </span>
+          <div id="pricingTiersDisplay" class="grid grid-cols-2 gap-2 text-xs">
+            <!-- Dynamically populated tiers -->
+          </div>
+        </div>
+      </div>
+
+      <!-- PREMIOS SHOWCASE SECTION (CLIENT VIEW) -->
+      <div class="mt-6 pt-4 border-t border-slate-800/80">
+        <div class="flex items-center space-x-2 mb-4">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+            <i class="fa-solid fa-trophy text-base"></i>
+          </div>
+          <div>
+            <h3 class="font-display font-bold text-base text-white">Premios del Sorteo</h3>
+            <p class="text-xs text-slate-400">¡Conocé todo lo que podés ganar participando hoy!</p>
+          </div>
+        </div>
+
+        <div id="prizesShowcaseGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Dynamically populated Prize Cards -->
+        </div>
+      </div>
+
+      <!-- Quick Counter Bar -->
+      <div class="grid grid-cols-3 gap-2 mt-6 pt-6 border-t border-slate-800/80 text-center text-xs font-medium">
+        <div class="flex items-center justify-center space-x-2 text-emerald-400 bg-emerald-500/5 py-2 rounded-lg border border-emerald-500/10">
+          <span class="w-2.5 h-2.5 rounded-full bg-status-free"></span>
+          <span>Libres: <strong id="statCountFree">0</strong></span>
+        </div>
+        <div class="flex items-center justify-center space-x-2 text-amber-400 bg-amber-500/5 py-2 rounded-lg border border-amber-500/10">
+          <span class="w-2.5 h-2.5 rounded-full bg-status-reserved"></span>
+          <span>Reservados: <strong id="statCountReserved">0</strong></span>
+        </div>
+        <div class="flex items-center justify-center space-x-2 text-rose-400 bg-rose-500/5 py-2 rounded-lg border border-rose-500/10">
+          <span class="w-2.5 h-2.5 rounded-full bg-status-sold"></span>
+          <span>Vendidos: <strong id="statCountSold">0</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTROLS & FILTER BAR -->
+    <div class="glass-card p-4 rounded-xl mb-6 space-y-4 md:space-y-0 md:flex md:items-center md:justify-between gap-4">
+      
+      <!-- Search Input -->
+      <div class="relative flex-1 max-w-md">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+        <input type="text" id="searchInput" placeholder="Buscar número de la suerte (ej. 0142)..." 
+               class="w-full bg-slate-900/90 border border-slate-700/80 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition">
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="flex items-center space-x-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800 overflow-x-auto text-xs">
+        <button id="filterBtnAll" onclick="setFilter('ALL')" class="px-3 py-1.5 rounded-md font-medium text-slate-200 bg-slate-800 shadow transition">Todos</button>
+        <button id="filterBtnFree" onclick="setFilter('FREE')" class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-emerald-400 transition">Libres</button>
+        <button id="filterBtnReserved" onclick="setFilter('RESERVED')" class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-amber-400 transition">Reservados</button>
+        <button id="filterBtnSold" onclick="setFilter('SOLD')" class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-rose-400 transition">Vendidos</button>
+      </div>
+
+      <!-- Quick Pickers -->
+      <div class="flex items-center space-x-2 min-w-fit">
+        <span class="text-xs text-slate-400 hidden lg:inline"><i class="fa-solid fa-dice text-brand-400 mr-1"></i>Al azar:</span>
+        <button onclick="selectRandomNumbers(1)" class="px-2.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
+          +1
+        </button>
+        <button onclick="selectRandomNumbers(3)" class="px-2.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
+          +3
+        </button>
+        <button onclick="selectRandomNumbers(5)" class="px-2.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
+          +5
+        </button>
+        <button onclick="clearSelection()" id="clearSelectionBtn" class="hidden px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-semibold transition">
+          <i class="fa-solid fa-trash-can mr-1"></i> Limpiar
+        </button>
+      </div>
+
+    </div>
+
+    <!-- INTERACTIVE NUMBERS GRID -->
+    <div id="gridContainer" class="grid-bottom-safe-area min-h-[400px]">
+      
+      <div id="numbersGrid" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 sm:gap-2.5">
+        <!-- Dynamic Grid Content -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyGridState" class="hidden py-16 text-center">
+        <i class="fa-solid fa-ticket-simple text-4xl text-slate-600 mb-3"></i>
+        <p class="text-slate-400 font-medium">No se encontraron números con este filtro o búsqueda.</p>
+        <button onclick="resetFilters()" class="mt-3 text-xs text-brand-400 hover:underline">Restablecer filtros</button>
+      </div>
+
+      <!-- Pagination -->
+      <div id="paginationControls" class="mt-8 flex items-center justify-between border-t border-slate-800 pt-4 text-xs">
+        <span id="paginationInfo" class="text-slate-400">Mostrando 1 - 200 de 1000 números</span>
+        <div class="flex space-x-2">
+          <button id="prevPageBtn" onclick="changePage(-1)" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700/60">Anterior</button>
+          <button id="nextPageBtn" onclick="changePage(1)" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-700/60">Siguiente</button>
+        </div>
+      </div>
+
+      <!-- Spacer element to guarantee banner separation -->
+      <div class="h-28 w-full" aria-hidden="true"></div>
+    </div>
+
+  </main>
+
+  <!-- FLOATING BOTTOM RESERVATION BANNER -->
+  <div id="floatingBanner" class="fixed bottom-0 left-0 right-0 z-40 banner-slide-up transform translate-y-full opacity-0 pointer-events-none p-3 sm:p-4">
+    <div class="max-w-4xl mx-auto glass-card border border-emerald-500/40 rounded-2xl p-4 shadow-2xl bg-slate-900/95 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      
+      <!-- Selected Items Info -->
+      <div class="flex-1 overflow-hidden">
+        <div class="flex items-center space-x-2 mb-1.5">
+          <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center">
+            <i class="fa-solid fa-circle-check mr-1.5"></i> Seleccionados (<span id="selectedCount">0</span> / 20)
+          </span>
+          <span id="maxLimitBadge" class="hidden text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+            Límite Máximo Alcanzado (20)
+          </span>
+        </div>
+
+        <div id="selectedChips" class="flex flex-wrap gap-1.5 max-h-16 overflow-y-auto pr-2 py-0.5">
+          <!-- Dynamically inserted selection badges -->
+        </div>
+      </div>
+
+      <!-- Price & Action Button -->
+      <div class="flex items-center justify-between md:justify-end space-x-4 pt-3 md:pt-0 border-t md:border-t-0 border-slate-800">
+        <div class="text-left md:text-right">
+          <span class="block text-[10px] uppercase text-slate-400 font-semibold">Total a Pagar</span>
+          <span id="selectedTotalPrice" class="text-2xl font-display font-extrabold text-white">$0</span>
+        </div>
+
+        <button onclick="openReservationModal()" class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-display font-bold text-sm shadow-lg shadow-emerald-500/20 transform active:scale-95 transition flex items-center space-x-2">
+          <span>RESERVAR NÚMEROS</span>
+          <i class="fa-brands fa-whatsapp text-lg"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL 1: CLIENT RESERVATION FORM -->
+  <div id="reservationModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+    <div class="glass-card max-w-lg w-full rounded-2xl p-6 border border-slate-700/80 shadow-2xl relative">
+      
+      <button onclick="closeReservationModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+          <i class="fa-solid fa-clipboard-check text-xl"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-display font-bold text-white">Completar Reserva</h3>
+          <p class="text-xs text-slate-400">Ingresá tus datos para apartar tus números</p>
+        </div>
+      </div>
+
+      <!-- Selection Summary -->
+      <div class="bg-slate-900/80 rounded-xl p-3 mb-4 border border-slate-800 text-xs flex justify-between items-center">
+        <div>
+          <span class="text-slate-400 block">Números seleccionados:</span>
+          <span id="modalSelectedNumbersList" class="font-mono font-bold text-emerald-400 text-sm"></span>
+        </div>
+        <div class="text-right">
+          <span class="text-slate-400 block">Total:</span>
+          <span id="modalSelectedTotal" class="font-bold text-white text-base"></span>
+        </div>
+      </div>
+
+      <form id="reservationForm" onsubmit="handleReservationSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Nombre Completo *</label>
+          <input type="text" id="custName" required placeholder="Ej: Juan Pérez" 
+                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">DNI / Documento *</label>
+            <input type="text" id="custDNI" required placeholder="Ej: 38123456" 
+                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Teléfono / WhatsApp *</label>
+            <input type="tel" id="custPhone" required placeholder="Ej: 1123456789" 
+                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-[11px] text-amber-300 flex items-start space-x-2">
+          <i class="fa-solid fa-clock text-amber-400 mt-0.5"></i>
+          <span>Reserva temporal: Tus números quedarán en estado <strong class="text-amber-400">RESERVADO</strong> por <span id="modalHoldMinutes">30</span> min hasta enviar el comprobante por WhatsApp.</span>
+        </div>
+
+        <button type="submit" class="w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-sm transition shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2">
+          <i class="fa-brands fa-whatsapp text-lg"></i>
+          <span>CONFIRMAR Y ENVIAR POR WHATSAPP</span>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- MODAL 2: FULL FEATURED ADMIN PANEL -->
+  <div id="adminModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-3 sm:p-6 bg-slate-950/90 backdrop-blur-md">
+    <div class="glass-card max-w-6xl w-full h-[90vh] rounded-2xl border border-slate-700/80 shadow-2xl flex flex-col overflow-hidden">
+      
+      <!-- Admin Header -->
+      <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/80 shrink-0">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center border border-brand-500/30">
+            <i class="fa-solid fa-user-gear text-xl"></i>
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-display font-bold text-white">Panel de Control de Sorteos</h3>
+            <p class="text-xs text-slate-400">Gestión de datos, clientes, ventas, expiración y backup</p>
+          </div>
+        </div>
+        <button onclick="toggleAdminModal(false)" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- ADMIN LOGIN SCREEN (IF UNAUTHENTICATED) -->
+      <div id="adminAuthScreen" class="p-8 text-center max-w-sm mx-auto my-auto space-y-4">
+        <div class="w-16 h-16 rounded-full bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto border border-brand-500/20">
+          <i class="fa-solid fa-lock text-2xl"></i>
+        </div>
+        <h4 class="text-lg font-bold text-white">Acceso Administrador</h4>
+        <p class="text-xs text-slate-400">Ingresa la contraseña para acceder al panel. (Default: <code class="text-brand-300">admin123</code>)</p>
+        <form onsubmit="authenticateAdmin(event)" class="space-y-3">
+          <input type="password" id="adminPasswordInput" required placeholder="Contraseña de acceso" 
+                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-center text-white focus:border-brand-500 focus:outline-none">
+          <button type="submit" class="w-full py-2.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm transition shadow-lg shadow-brand-500/20">
+            Iniciar Sesión
+          </button>
+        </form>
+        <p id="adminAuthError" class="text-xs text-rose-400 hidden"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Contraseña incorrecta</p>
+      </div>
+
+      <!-- ADMIN CONTENT DASHBOARD (AUTHENTICATED) -->
+      <div id="adminContent" class="hidden flex-1 flex flex-col overflow-hidden">
+        
+        <!-- Admin Nav Bar Tabs -->
+        <div class="flex border-b border-slate-800 bg-slate-900/50 px-4 pt-3 space-x-2 sm:space-x-4 text-xs font-semibold overflow-x-auto shrink-0">
+          <button onclick="switchAdminTab('dashboard')" id="tabBtnDashboard" class="pb-2.5 border-b-2 border-brand-500 text-brand-400 whitespace-nowrap">
+            <i class="fa-solid fa-chart-pie mr-1"></i> Dashboard
+          </button>
+          <button onclick="switchAdminTab('prizes')" id="tabBtnPrizes" class="pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">
+            <i class="fa-solid fa-trophy mr-1"></i> Premios
+          </button>
+          <button onclick="switchAdminTab('sales')" id="tabBtnSales" class="pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">
+            <i class="fa-solid fa-users mr-1"></i> Ventas & Clientes
+          </button>
+          <button onclick="switchAdminTab('quick')" id="tabBtnQuick" class="pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">
+            <i class="fa-solid fa-bolt mr-1"></i> Asignación Rápida
+          </button>
+          <button onclick="switchAdminTab('settings')" id="tabBtnSettings" class="pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">
+            <i class="fa-solid fa-sliders mr-1"></i> Ajustes Sorteo
+          </button>
+          <button onclick="switchAdminTab('security')" id="tabBtnSecurity" class="pb-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">
+            <i class="fa-solid fa-shield-halved mr-1"></i> Contraseña & Backup
+          </button>
+        </div>
+
+        <!-- TAB CONTENT CONTAINER -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+
+          <!-- TAB 1: DASHBOARD & STATS -->
+          <div id="adminTabDashboard" class="space-y-6">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+                <span class="text-xs text-slate-400 font-semibold uppercase">Total Recaudado</span>
+                <p id="admStatRevenue" class="text-2xl font-display font-extrabold text-emerald-400 mt-1">$0</p>
+                <span id="admStatPotential" class="text-[10px] text-slate-500">Recaudación Potencial: $0</span>
+              </div>
+              <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+                <span class="text-xs text-slate-400 font-semibold uppercase">% Avance Ventas</span>
+                <p id="admStatPercent" class="text-2xl font-display font-extrabold text-brand-400 mt-1">0%</p>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                  <div id="admStatProgressBar" class="bg-brand-500 h-full w-0 transition-all duration-500"></div>
+                </div>
+              </div>
+              <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+                <span class="text-xs text-slate-400 font-semibold uppercase">Promedio por Cliente</span>
+                <p id="admStatAvgTicket" class="text-2xl font-display font-extrabold text-indigo-400 mt-1">$0</p>
+                <span id="admStatTotalClients" class="text-[10px] text-slate-500">Total Compradores: 0</span>
+              </div>
+              <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800">
+                <span class="text-xs text-slate-400 font-semibold uppercase">Reservas Activas</span>
+                <p id="admStatReservedCount" class="text-2xl font-display font-extrabold text-amber-400 mt-1">0</p>
+                <button onclick="clearExpiredReservationsWithConfirmation()" class="mt-1 text-[11px] text-rose-400 hover:underline font-semibold flex items-center">
+                  <i class="fa-solid fa-clock-rotate-left mr-1"></i> Liberar Vencidas
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick Export & QR section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              <!-- Excel & Backup Quick Panel -->
+              <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-3">
+                <h4 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center">
+                  <i class="fa-solid fa-file-excel text-emerald-400 mr-2 text-base"></i> Exportación Oficial de Datos
+                </h4>
+                <p class="text-xs text-slate-400">Descarga la lista de ventas en Excel real (.xlsx) o genera respaldos en formato JSON.</p>
+                <div class="flex flex-wrap gap-2.5 pt-2">
+                  <button onclick="exportToExcelXLSX()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-600/20 flex items-center">
+                    <i class="fa-solid fa-download mr-2"></i> Descargar Excel (.xlsx)
+                  </button>
+                  <button onclick="exportBackupJSON()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs border border-slate-700 transition">
+                    Backup JSON
+                  </button>
+                </div>
+              </div>
+
+              <!-- Social Media QR Code Card -->
+              <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 flex items-center space-x-4">
+                <div id="qrcodeCanvas" class="p-2 bg-white rounded-lg shadow-md shrink-0"></div>
+                <div class="space-y-2">
+                  <h4 class="text-xs font-bold text-white uppercase tracking-wider">Código QR para Difusión</h4>
+                  <p class="text-xs text-slate-400">Descargá este código para incluir en tus afiches o historias de Instagram.</p>
+                  <button onclick="downloadQRCode()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition">
+                    <i class="fa-solid fa-download mr-1"></i> Descargar QR (.png)
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- TAB: PRIZE MANAGEMENT (ADMIN) -->
+          <div id="adminTabPrizes" class="hidden space-y-6 max-w-4xl">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="text-sm font-bold text-white flex items-center">
+                  <i class="fa-solid fa-trophy text-amber-400 mr-2"></i> Gestor de Premios
+                </h4>
+                <p class="text-xs text-slate-400">Agregá, editá o eliminá los premios que se mostrarán al cliente.</p>
+              </div>
+              <button onclick="openPrizeEditorModal(null)" class="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition flex items-center space-x-1">
+                <i class="fa-solid fa-plus"></i>
+                <span>Nuevo Premio</span>
+              </button>
+            </div>
+
+            <div id="adminPrizesList" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Dynamically rendered admin prize items -->
+            </div>
+          </div>
+
+          <!-- TAB 2: CLIENT SALES & TABLE MANAGEMENT -->
+          <div id="adminTabSales" class="hidden space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="relative flex-1 max-w-md">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                <input type="text" id="admSalesSearch" oninput="renderSalesTable()" placeholder="Buscar por cliente, DNI o número..." 
+                       class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white focus:outline-none">
+              </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-slate-800">
+              <table class="w-full text-left text-xs text-slate-300">
+                <thead class="bg-slate-900 text-slate-400 font-semibold uppercase text-[10px] border-b border-slate-800">
+                  <tr>
+                    <th class="px-4 py-3">Números</th>
+                    <th class="px-4 py-3">Cliente</th>
+                    <th class="px-4 py-3">DNI / Tel</th>
+                    <th class="px-4 py-3">Monto</th>
+                    <th class="px-4 py-3">Estado</th>
+                    <th class="px-4 py-3">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="admSalesTableBody" class="divide-y divide-slate-800/60 bg-slate-900/40">
+                  <!-- Dynamically populated table rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 3: QUICK BATCH ASSIGNMENT -->
+          <div id="adminTabQuick" class="hidden space-y-4 max-w-2xl">
+            <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800 space-y-4">
+              <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center">
+                <i class="fa-solid fa-bolt text-amber-400 mr-2"></i> Asignación Masiva por Rangos
+              </h4>
+              <p class="text-xs text-slate-400">Ingresá números individuales o rangos separados por coma (ejemplo: <code class="text-brand-300">0005, 0010-0025, 0100</code>).</p>
+              
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Lista o Rango de Números</label>
+                <textarea id="quickAssignInput" rows="3" placeholder="Ej. 0001-0050, 0088, 0090" 
+                          class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs text-white font-mono focus:border-brand-500 focus:outline-none"></textarea>
+              </div>
+
+              <div class="flex flex-wrap gap-3">
+                <button onclick="executeQuickBatchChange('SOLD')" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition">
+                  <i class="fa-solid fa-check-double mr-1"></i> Marcar como VENDIDOS
+                </button>
+                <button onclick="executeQuickBatchChange('FREE')" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition">
+                  <i class="fa-solid fa-rotate-left mr-1"></i> Liberar a VERDE
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: RAFFLE SETTINGS & PRICING TIERS -->
+          <div id="adminTabSettings" class="hidden space-y-6 max-w-3xl">
+            <form onsubmit="saveRaffleSettingsWithConfirmation(event)" class="space-y-4 text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-semibold text-slate-300 mb-1">Título del Sorteo</label>
+                  <input type="text" id="cfgTitle" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-300 mb-1">URL del Logo de la Empresa</label>
+                  <input type="url" id="cfgLogoUrl" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label class="block font-semibold text-slate-300 mb-1">Total de Números (ej. 1000, 10000)</label>
+                  <input type="number" id="cfgTotalCount" required min="10" max="10000" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-300 mb-1">Minutos de Reserva</label>
+                  <input type="number" id="cfgHoldMinutes" required min="5" max="1440" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                </div>
+                <div>
+                  <label class="block font-semibold text-slate-300 mb-1">Teléfono WhatsApp (Con código de país)</label>
+                  <input type="text" id="cfgPhone" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                </div>
+              </div>
+
+              <!-- Dynamic Pricing Tiers Configurator -->
+              <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-white">Configuración de Combos / Precios por Cantidad</span>
+                  <button type="button" onclick="addPricingTierRow()" class="px-2.5 py-1 bg-brand-600 text-white font-bold rounded hover:bg-brand-500">
+                    + Agregar Combo
+                  </button>
+                </div>
+                
+                <div id="cfgTiersList" class="space-y-2">
+                  <!-- Dynamic Tier rows populated via JS -->
+                </div>
+              </div>
+
+              <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold transition shadow-lg shadow-brand-500/20">
+                Guardar Configuración
+              </button>
+            </form>
+          </div>
+
+          <!-- TAB 5: SECURITY & BACKUP RESTORE -->
+          <div id="adminTabSecurity" class="hidden space-y-6 max-w-2xl">
+            <!-- Password Form -->
+            <form onsubmit="changeAdminPassword(event)" class="bg-slate-900/90 p-5 rounded-xl border border-slate-800 space-y-3 text-xs">
+              <h4 class="font-bold text-white uppercase tracking-wider">Cambiar Contraseña de Administrador</h4>
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Nueva Contraseña</label>
+                <input type="password" id="newAdminPassword" required placeholder="Ingresá la nueva clave" 
+                       class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white">
+              </div>
+              <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition">
+                Actualizar Contraseña
+              </button>
+            </form>
+
+            <!-- Restore Backup File -->
+            <div class="bg-slate-900/90 p-5 rounded-xl border border-slate-800 space-y-3 text-xs">
+              <h4 class="font-bold text-white uppercase tracking-wider">Restaurar Base de Datos desde JSON</h4>
+              <p class="text-slate-400">Seleccioná un archivo de respaldo previo para restablecer todo el estado.</p>
+              <input type="file" id="restoreFileInput" accept=".json" class="block w-full text-slate-400 text-xs">
+              <button onclick="restoreBackupFromFile()" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold transition">
+                Restaurar Backup
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL 3: PRIZE EDITOR MODAL -->
+  <div id="prizeEditorModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+    <div class="glass-card max-w-md w-full rounded-2xl p-6 border border-slate-700/80 shadow-2xl relative">
+      <button onclick="closePrizeEditorModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <h3 id="prizeModalTitle" class="text-base font-display font-bold text-white mb-4">Agregar Nuevo Premio</h3>
+
+      <form onsubmit="savePrizeWithConfirmation(event)" class="space-y-4 text-xs">
+        <input type="hidden" id="editPrizeId">
+
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Lugar / Posición *</label>
+          <select id="prizePlace" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white">
+            <option value="1">🥇 1º Premio (Principal)</option>
+            <option value="2">🥈 2º Premio</option>
+            <option value="3">🥉 3º Premio</option>
+            <option value="4">🏅 4º Premio</option>
+            <option value="5">🏅 5º Premio</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Nombre del Premio *</label>
+          <input type="text" id="prizeTitle" required placeholder="Ej. Auto 0km / Smart TV 55'' / $500.000" 
+                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-white placeholder-slate-500">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Descripción / Detalles</label>
+          <textarea id="prizeDesc" rows="3" placeholder="Ej. Incluye gastos de flete, color a elección o transferencia inmediata..." 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2 text-white placeholder-slate-500"></textarea>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">URL de Imagen Promocional *</label>
+          <input type="url" id="prizeImageUrl" required placeholder="https://..." 
+                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3.5 py-2.5 text-white placeholder-slate-500">
+        </div>
+
+        <button type="submit" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-display font-bold transition shadow-lg shadow-amber-500/20">
+          Guardar Premio
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: CUSTOM TRIPLE CONFIRMATION MODAL -->
+  <div id="customConfirmModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+    <div class="glass-card max-w-md w-full rounded-2xl p-6 border border-amber-500/40 shadow-2xl relative text-center space-y-4">
+      <div id="confirmStepIcon" class="w-14 h-14 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/30 text-2xl font-bold">
+        1/3
+      </div>
+      <div>
+        <span id="confirmStepBadge" class="text-[10px] font-extrabold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+          Confirmación de Seguridad (Paso 1 de 3)
+        </span>
+        <h4 id="confirmModalTitle" class="text-base font-bold text-white mt-2">¿Seguro que deseas realizar esta acción?</h4>
+        <p id="confirmModalText" class="text-xs text-slate-300 mt-1 leading-relaxed"></p>
+      </div>
+      <div class="flex items-center space-x-3 pt-2">
+        <button id="cancelConfirmBtn" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition">
+          Cancelar
+        </button>
+        <button id="acceptConfirmBtn" class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-amber-500/20">
+          Siguiente Confirmación
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: CUSTOM ALERT NOTIFICATION MODAL -->
+  <div id="customAlertModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+    <div class="glass-card max-w-sm w-full rounded-2xl p-6 border border-brand-500/40 shadow-2xl relative text-center space-y-4">
+      <div id="alertModalIcon" class="w-12 h-12 rounded-full bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto border border-brand-500/30 text-xl">
+        <i class="fa-solid fa-circle-info"></i>
+      </div>
+      <div>
+        <h4 id="alertModalTitle" class="text-base font-bold text-white">Notificación</h4>
+        <p id="alertModalText" class="text-xs text-slate-300 mt-1 leading-relaxed"></p>
+      </div>
+      <button onclick="closeCustomAlert()" class="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs transition shadow-lg shadow-brand-500/20">
+        Entendido
+      </button>
+    </div>
+  </div>
+
+  <!-- PRINTABLE TICKET (HIDDEN ON SCREEN) -->
+  <div id="printableTicket" class="p-8 bg-white text-black font-sans hidden">
+    <div class="text-center border-b pb-4 mb-4">
+      <h2 id="tktRaffleTitle" class="text-2xl font-bold uppercase">Gran Sorteo Pro</h2>
+      <p class="text-sm text-gray-600">Comprobante de Reserva / Compra</p>
+    </div>
+    <div class="space-y-2 text-sm mb-6">
+      <p><strong>Cliente:</strong> <span id="tktClientName"></span></p>
+      <p><strong>DNI:</strong> <span id="tktClientDNI"></span></p>
+      <p><strong>Teléfono:</strong> <span id="tktClientPhone"></span></p>
+      <p><strong>Fecha:</strong> <span id="tktDate"></span></p>
+      <p><strong>Números Asignados:</strong> <span id="tktNumbers" class="font-mono font-bold text-lg"></span></p>
+      <p><strong>Monto Total:</strong> <span id="tktTotal" class="font-bold text-lg"></span></p>
+    </div>
+    <div class="text-center border-t pt-4 text-xs text-gray-500">
+      ¡Muchas gracias por participar! Conserve este comprobante.
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       APP STATE & CONFIGURATION
+       ========================================================================== */
+    const STORAGE_KEY = 'SORTEO_APP_DATA_PRO_V2';
+
+    let appData = {
+      config: {
+        title: 'Gran Sorteo Pro',
+        subtitle: 'Selecciona tus números de la suerte',
+        logoUrl: 'https://placehold.co/100x100/4f46e5/ffffff?text=LOGO',
+        totalNumbers: 1000,
+        holdMinutes: 30,
+        adminPass: 'admin123',
+        whatsappPhone: '5491123456789',
+        // Dynamic Pricing Tiers Array
+        tiers: [
+          { qty: 1, price: 10 },
+          { qty: 2, price: 20 },
+          { qty: 5, price: 45 },
+          { qty: 10, price: 80 }
+        ]
+      },
+      // Configurable Raffle Prizes
+      prizes: [
+        {
+          id: 'p1',
+          place: 1,
+          title: 'Moto 0km 150cc',
+          desc: '¡Te llevás una moto cero kilómetro patentada lista para rodar!',
+          imageUrl: 'https://placehold.co/600x400/1e1b4b/e0e7ff?text=Moto+0km'
+        },
+        {
+          id: 'p2',
+          place: 2,
+          title: 'Smart TV 55" 4K',
+          desc: 'Televisor UHD de última generación con Android TV incorporado.',
+          imageUrl: 'https://placehold.co/600x400/0f172a/38bdf8?text=Smart+TV+55'
+        }
+      ],
+      // Numbers state dictionary: { "0000": { status: "FREE"|"RESERVED"|"SOLD", updatedAt: timestamp, customer: {} } }
+      numbers: {},
+      selected: [] // Active selection list (max 20)
+    };
+
+    let currentFilter = 'ALL';
+    let searchQuery = '';
+    let currentPage = 1;
+    const pageSize = 200;
+    let isAdminAuthenticated = false;
+
+    /* ==========================================================================
+       CUSTOM DIALOGS & NOTIFICATION REPLACEMENTS (NO NATIVE ALERT / CONFIRM)
+       ========================================================================== */
+    function showAlert(message, title = "Notificación") {
+      document.getElementById('alertModalTitle').innerText = title;
+      document.getElementById('alertModalText').innerText = message;
+      document.getElementById('customAlertModal').classList.remove('hidden');
+    }
+
+    function closeCustomAlert() {
+      document.getElementById('customAlertModal').classList.add('hidden');
+    }
+
+    function executeTripleSafetyCheck(actionDescription, onConfirmedCallback) {
+      let currentStep = 1;
+      const modal = document.getElementById('customConfirmModal');
+      const stepIcon = document.getElementById('confirmStepIcon');
+      const stepBadge = document.getElementById('confirmStepBadge');
+      const titleEl = document.getElementById('confirmModalTitle');
+      const textEl = document.getElementById('confirmModalText');
+      const acceptBtn = document.getElementById('acceptConfirmBtn');
+      const cancelBtn = document.getElementById('cancelConfirmBtn');
+
+      function updateStepView() {
+        stepIcon.innerText = `${currentStep}/3`;
+        stepBadge.innerText = `Confirmación de Seguridad (Paso ${currentStep} de 3)`;
+        if (currentStep === 1) {
+          titleEl.innerText = `¿Desea ${actionDescription}?`;
+          textEl.innerText = `[PASO 1/3]: Verifique la acción antes de continuar.`;
+          acceptBtn.innerText = "Siguiente (1/3) →";
+        } else if (currentStep === 2) {
+          titleEl.innerText = `¿Confirmación Secundaria?`;
+          textEl.innerText = `[PASO 2/3]: Reitere si realmente desea proceder con "${actionDescription}".`;
+          acceptBtn.innerText = "Continuar (2/3) →";
+        } else if (currentStep === 3) {
+          titleEl.innerText = `¡ÚLTIMO AVISO DE SEGURIDAD!`;
+          textEl.innerText = `[PASO 3/3]: Esta acción modificará los datos del sorteo. ¿Ejecutar ahora?`;
+          acceptBtn.innerText = "SÍ, EJECUTAR AHORA";
+        }
+      }
+
+      const cleanup = () => {
+        acceptBtn.onclick = null;
+        cancelBtn.onclick = null;
+        modal.classList.add('hidden');
+      };
+
+      acceptBtn.onclick = () => {
+        if (currentStep < 3) {
+          currentStep++;
+          updateStepView();
+        } else {
+          cleanup();
+          onConfirmedCallback();
+        }
+      };
+
+      cancelBtn.onclick = () => {
+        cleanup();
+      };
+
+      updateStepView();
+      modal.classList.remove('hidden');
+    }
+
+    /* ==========================================================================
+       INITIALIZATION
+       ========================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      loadDataFromStorage();
+      setupEventListeners();
+      renderAppHeader();
+      renderPrizesShowcase();
+      renderGrid();
+      updateStatsUI();
+      generateAdminQR();
+      renderPricingTiersList();
+    });
+
+    function loadDataFromStorage() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          appData.config = { ...appData.config, ...parsed.config };
+          appData.numbers = parsed.numbers || {};
+          if (parsed.prizes) appData.prizes = parsed.prizes;
+        } catch (e) {
+          console.error("Error loading localStorage", e);
+        }
+      }
+      initializeNumbersDict();
+    }
+
+    function saveDataToStorage() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        config: appData.config,
+        numbers: appData.numbers,
+        prizes: appData.prizes
+      }));
+    }
+
+    function initializeNumbersDict() {
+      for (let i = 0; i < appData.config.totalNumbers; i++) {
+        const numStr = String(i).padStart(4, '0');
+        if (!appData.numbers[numStr]) {
+          appData.numbers[numStr] = {
+            status: 'FREE',
+            updatedAt: null,
+            customer: null
+          };
+        }
+      }
+    }
+
+    /* ==========================================================================
+       HEADER & APP INFO RENDERERS
+       ========================================================================== */
+    function renderAppHeader() {
+      const logoEl = document.getElementById('headerCompanyLogo');
+      if (logoEl) logoEl.src = appData.config.logoUrl || 'https://placehold.co/100x100/4f46e5/ffffff?text=LOGO';
+
+      const titleEl = document.getElementById('headerRaffleTitle');
+      if (titleEl) titleEl.innerText = appData.config.title;
+
+      const subtitleEl = document.getElementById('headerRaffleSubtitle');
+      if (subtitleEl) subtitleEl.innerText = appData.config.subtitle || 'Selecciona tus números de la suerte';
+
+      const mainTitleEl = document.getElementById('mainRaffleTitle');
+      if (mainTitleEl) mainTitleEl.innerText = appData.config.title.toUpperCase();
+
+      const mainDescEl = document.getElementById('mainRaffleDesc');
+      if (mainDescEl) mainDescEl.innerText = appData.config.subtitle || 'Elegí tus números preferidos, completá la reserva en segundos y enviala por WhatsApp para confirmación.';
+
+      const waBtn = document.getElementById('directWhatsappBtn');
+      if (waBtn) waBtn.href = `https://wa.me/${appData.config.whatsappPhone}`;
+
+      renderPricingTiersDisplay();
+    }
+
+    function renderPricingTiersDisplay() {
+      const container = document.getElementById('pricingTiersDisplay');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const sorted = [...appData.config.tiers].sort((a, b) => a.qty - b.qty);
+      sorted.forEach(t => {
+        const badge = document.createElement('div');
+        badge.className = 'bg-slate-900/80 border border-slate-700/80 rounded-lg p-2 flex justify-between items-center';
+        badge.innerHTML = `<span class="font-bold text-slate-200">${t.qty} nº${t.qty > 1 ? 's' : ''}</span><span class="text-emerald-400 font-extrabold">$${t.price.toLocaleString()}</span>`;
+        container.appendChild(badge);
+      });
+    }
+
+    /* ==========================================================================
+       PRIZES SHOWCASE RENDERER (CLIENT & ADMIN)
+       ========================================================================== */
+    function renderPrizesShowcase() {
+      const clientGrid = document.getElementById('prizesShowcaseGrid');
+      const adminList = document.getElementById('adminPrizesList');
+      if (!clientGrid) return;
+
+      clientGrid.innerHTML = '';
+      if (adminList) adminList.innerHTML = '';
+
+      // Sort prizes by place order (1st, 2nd, 3rd)
+      const sortedPrizes = [...appData.prizes].sort((a, b) => a.place - b.place);
+
+      if (sortedPrizes.length === 0) {
+        clientGrid.innerHTML = `
+          <div class="col-span-full p-6 text-center text-xs text-slate-500 bg-slate-900/50 rounded-xl border border-slate-800">
+            Próximamente se anunciarán los premios de este sorteo.
+          </div>
+        `;
+        return;
+      }
+
+      const medalMap = { 1: '🥇 1º Premio', 2: '🥈 2º Premio', 3: '🥉 3º Premio', 4: '🏅 4º Premio', 5: '🏅 5º Premio' };
+
+      sortedPrizes.forEach(prize => {
+        // Render Client Card
+        const card = document.createElement('div');
+        card.className = 'glass-card rounded-xl overflow-hidden border border-slate-800 flex flex-col group hover:border-amber-500/40 transition duration-300';
+        card.innerHTML = `
+          <div class="relative h-44 bg-slate-900 overflow-hidden">
+            <img src="${prize.imageUrl}" alt="${prize.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" onerror="this.src='https://placehold.co/600x400/1e293b/ffffff?text=Premio'">
+            <span class="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-amber-400 font-display font-extrabold text-xs border border-amber-500/30">
+              ${medalMap[prize.place] || `🏅 ${prize.place}º Premio`}
+            </span>
+          </div>
+          <div class="p-4 flex-1 flex flex-col justify-between space-y-2">
+            <div>
+              <h4 class="font-display font-bold text-base text-white group-hover:text-amber-400 transition">${prize.title}</h4>
+              <p class="text-xs text-slate-400 leading-relaxed mt-1">${prize.desc || ''}</p>
+            </div>
+          </div>
+        `;
+        clientGrid.appendChild(card);
+
+        // Render Admin Card if active
+        if (adminList) {
+          const admCard = document.createElement('div');
+          admCard.className = 'bg-slate-900 p-4 rounded-xl border border-slate-800 flex space-x-3 items-center justify-between';
+          admCard.innerHTML = `
+            <div class="flex items-center space-x-3 overflow-hidden">
+              <img src="${prize.imageUrl}" class="w-14 h-14 rounded-lg object-cover shrink-0 border border-slate-700">
+              <div class="overflow-hidden">
+                <span class="text-[10px] font-bold text-amber-400 block">${medalMap[prize.place] || `${prize.place}º Premio`}</span>
+                <h5 class="font-bold text-xs text-white truncate">${prize.title}</h5>
+                <p class="text-[11px] text-slate-400 truncate">${prize.desc || '-'}</p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-1 shrink-0">
+              <button onclick="openPrizeEditorModal('${prize.id}')" class="p-2 text-indigo-400 hover:text-indigo-300 rounded-lg hover:bg-slate-800">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="deletePrizeWithConfirmation('${prize.id}')" class="p-2 text-rose-400 hover:text-rose-300 rounded-lg hover:bg-slate-800">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          `;
+          adminList.appendChild(admCard);
+        }
+      });
+    }
+
+    function openPrizeEditorModal(prizeId) {
+      const modal = document.getElementById('prizeEditorModal');
+      document.getElementById('editPrizeId').value = prizeId || '';
+
+      if (prizeId) {
+        const p = appData.prizes.find(x => x.id === prizeId);
+        if (p) {
+          document.getElementById('prizeModalTitle').innerText = "Editar Premio";
+          document.getElementById('prizePlace').value = p.place;
+          document.getElementById('prizeTitle').value = p.title;
+          document.getElementById('prizeDesc').value = p.desc;
+          document.getElementById('prizeImageUrl').value = p.imageUrl;
+        }
+      } else {
+        document.getElementById('prizeModalTitle').innerText = "Agregar Nuevo Premio";
+        document.getElementById('prizePlace').value = (appData.prizes.length + 1);
+        document.getElementById('prizeTitle').value = '';
+        document.getElementById('prizeDesc').value = '';
+        document.getElementById('prizeImageUrl').value = '';
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closePrizeEditorModal() {
+      document.getElementById('prizeEditorModal').classList.add('hidden');
+    }
+
+    function savePrizeWithConfirmation(e) {
+      e.preventDefault();
+      const prizeId = document.getElementById('editPrizeId').value;
+      const place = parseInt(document.getElementById('prizePlace').value);
+      const title = document.getElementById('prizeTitle').value.trim();
+      const desc = document.getElementById('prizeDesc').value.trim();
+      const imageUrl = document.getElementById('prizeImageUrl').value.trim();
+
+      const actionText = prizeId ? `GUARDAR CAMBIOS en el premio "${title}"` : `AGREGAR el nuevo premio "${title}"`;
+
+      executeTripleSafetyCheck(actionText, () => {
+        if (prizeId) {
+          const index = appData.prizes.findIndex(p => p.id === prizeId);
+          if (index >= 0) {
+            appData.prizes[index] = { id: prizeId, place, title, desc, imageUrl };
+          }
+        } else {
+          appData.prizes.push({
+            id: 'p_' + Date.now(),
+            place,
+            title,
+            desc,
+            imageUrl
+          });
+        }
+
+        saveDataToStorage();
+        renderPrizesShowcase();
+        closePrizeEditorModal();
+        showAlert("Premio guardado correctamente.", "Éxito");
+      });
+    }
+
+    function deletePrizeWithConfirmation(prizeId) {
+      const p = appData.prizes.find(x => x.id === prizeId);
+      if (!p) return;
+
+      executeTripleSafetyCheck(`ELIMINAR el premio "${p.title}"`, () => {
+        appData.prizes = appData.prizes.filter(x => x.id !== prizeId);
+        saveDataToStorage();
+        renderPrizesShowcase();
+        showAlert("Premio eliminado.", "Premio Eliminado");
+      });
+    }
+
+    function updateStatsUI() {
+      let free = 0, reserved = 0, sold = 0;
+      let totalRevenue = 0;
+      const customersMap = new Map();
+
+      Object.entries(appData.numbers).forEach(([numStr, item]) => {
+        if (item.status === 'FREE') free++;
+        else if (item.status === 'RESERVED') reserved++;
+        else if (item.status === 'SOLD') {
+          sold++;
+          if (item.customer && item.customer.dni) {
+            customersMap.set(item.customer.dni, (customersMap.get(item.customer.dni) || 0) + 1);
+          }
+        }
+      });
+
+      const total = appData.config.totalNumbers;
+      document.getElementById('statCountFree').innerText = free;
+      document.getElementById('statCountReserved').innerText = reserved;
+      document.getElementById('statCountSold').innerText = sold;
+
+      totalRevenue = calculateRevenueForQty(sold);
+      const potentialRevenue = calculateRevenueForQty(total);
+      const percentSold = ((sold / total) * 100).toFixed(1);
+
+      document.getElementById('admStatRevenue').innerText = `$${totalRevenue.toLocaleString()}`;
+      document.getElementById('admStatPotential').innerText = `Recaudación Potencial: $${potentialRevenue.toLocaleString()}`;
+      document.getElementById('admStatPercent').innerText = `${percentSold}%`;
+      document.getElementById('admStatProgressBar').style.width = `${percentSold}%`;
+      document.getElementById('admStatReservedCount').innerText = reserved;
+
+      const totalBuyers = customersMap.size || 1;
+      const avgTicket = (totalRevenue / totalBuyers).toFixed(0);
+      document.getElementById('admStatAvgTicket').innerText = `$${parseInt(avgTicket).toLocaleString()}`;
+      document.getElementById('admStatTotalClients').innerText = `Total Compradores: ${customersMap.size}`;
+    }
+
+    /* ==========================================================================
+       DYNAMIC PRICING CALCULATION LOGIC
+       ========================================================================== */
+    function calculateTotalPrice(qty) {
+      if (qty <= 0) return 0;
+      // Sort tiers descending by quantity
+      const sortedTiers = [...appData.config.tiers].sort((a, b) => b.qty - a.qty);
+      let rem = qty;
+      let total = 0;
+
+      for (const tier of sortedTiers) {
+        if (rem >= tier.qty) {
+          const count = Math.floor(rem / tier.qty);
+          total += count * tier.price;
+          rem = rem % tier.qty;
+        }
+      }
+      // If remainder exists fallback to unit
+      if (rem > 0) {
+        const unitPrice = sortedTiers[sortedTiers.length - 1].price;
+        total += rem * unitPrice;
+      }
+      return total;
+    }
+
+    function calculateRevenueForQty(qty) {
+      return calculateTotalPrice(qty);
+    }
+
+    /* ==========================================================================
+       GRID RENDERER WITH MAX 20 LIMIT
+       ========================================================================== */
+    function getFilteredNumbers() {
+      const keys = Object.keys(appData.numbers);
+      return keys.filter(num => {
+        const item = appData.numbers[num];
+        if (currentFilter !== 'ALL' && item.status !== currentFilter) return false;
+        if (searchQuery && !num.includes(searchQuery)) return false;
+        return true;
+      });
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('numbersGrid');
+      const emptyState = document.getElementById('emptyGridState');
+      const filteredList = getFilteredNumbers();
+
+      const totalItems = filteredList.length;
+      const maxPages = Math.ceil(totalItems / pageSize) || 1;
+      if (currentPage > maxPages) currentPage = maxPages;
+
+      const startIndex = (currentPage - 1) * pageSize;
+      const pageItems = filteredList.slice(startIndex, startIndex + pageSize);
+
+      grid.innerHTML = '';
+
+      if (totalItems === 0) {
+        emptyState.classList.remove('hidden');
+        document.getElementById('paginationControls').classList.add('hidden');
+        return;
+      } else {
+        emptyState.classList.add('hidden');
+        document.getElementById('paginationControls').classList.remove('hidden');
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      pageItems.forEach(numStr => {
+        const item = appData.numbers[numStr];
+        const isSelected = appData.selected.includes(numStr);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+
+        let colorClasses = '';
+        if (isSelected) {
+          colorClasses = 'bg-indigo-600 text-white font-bold ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-950 scale-105 z-10';
+        } else if (item.status === 'FREE') {
+          colorClasses = 'bg-slate-900 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-400 cursor-pointer';
+        } else if (item.status === 'RESERVED') {
+          colorClasses = 'bg-amber-500/10 border-amber-500/30 text-amber-400/70 cursor-not-allowed opacity-80';
+        } else if (item.status === 'SOLD') {
+          colorClasses = 'bg-rose-500/10 border-rose-500/30 text-rose-500/50 cursor-not-allowed line-through opacity-60';
+        }
+
+        btn.className = `num-btn py-2.5 px-1 rounded-lg border text-xs sm:text-sm font-mono transition flex flex-col items-center justify-center ${colorClasses}`;
+        btn.innerHTML = `<span>${numStr}</span>`;
+
+        if (item.status === 'FREE') {
+          btn.onclick = () => toggleNumberSelection(numStr);
+        }
+
+        fragment.appendChild(btn);
+      });
+
+      grid.appendChild(fragment);
+
+      document.getElementById('paginationInfo').innerText = `Mostrando ${startIndex + 1} - ${Math.min(startIndex + pageSize, totalItems)} de ${totalItems} números`;
+      document.getElementById('prevPageBtn').disabled = currentPage === 1;
+      document.getElementById('nextPageBtn').disabled = currentPage === maxPages;
+    }
+
+    /* ==========================================================================
+       SELECTION MANAGEMENT & 20-NUMBER LIMIT GUARD
+       ========================================================================== */
+    function toggleNumberSelection(numStr) {
+      const index = appData.selected.indexOf(numStr);
+      if (index >= 0) {
+        appData.selected.splice(index, 1);
+      } else {
+        if (appData.selected.length >= 20) {
+          showAlert("¡Atención! La cantidad máxima por transacción es de 20 números. Por favor completa esta compra o desmarca uno para cambiarlo.", "Límite Alcanzado");
+          return;
+        }
+        appData.selected.push(numStr);
+      }
+      appData.selected.sort();
+      updateFloatingBanner();
+      renderGrid();
+    }
+
+    function selectRandomNumbers(count) {
+      const freeNumbers = Object.keys(appData.numbers).filter(n => appData.numbers[n].status === 'FREE' && !appData.selected.includes(n));
+      if (freeNumbers.length === 0) return;
+
+      let added = 0;
+      while (added < count && freeNumbers.length > 0 && appData.selected.length < 20) {
+        const randomIndex = Math.floor(Math.random() * freeNumbers.length);
+        appData.selected.push(freeNumbers[randomIndex]);
+        freeNumbers.splice(randomIndex, 1);
+        added++;
+      }
+
+      if (appData.selected.length >= 20) {
+        document.getElementById('maxLimitBadge').classList.remove('hidden');
+      }
+
+      appData.selected.sort();
+      updateFloatingBanner();
+      renderGrid();
+    }
+
+    function clearSelection() {
+      appData.selected = [];
+      updateFloatingBanner();
+      renderGrid();
+    }
+
+    function updateFloatingBanner() {
+      const banner = document.getElementById('floatingBanner');
+      const count = appData.selected.length;
+
+      if (count === 0) {
+        banner.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+        document.getElementById('clearSelectionBtn').classList.add('hidden');
+        return;
+      }
+
+      banner.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+      document.getElementById('clearSelectionBtn').classList.remove('hidden');
+      document.getElementById('selectedCount').innerText = count;
+
+      const total = calculateTotalPrice(count);
+      document.getElementById('selectedTotalPrice').innerText = `$${total.toLocaleString()}`;
+
+      const chipsContainer = document.getElementById('selectedChips');
+      chipsContainer.innerHTML = '';
+      appData.selected.forEach(num => {
+        const chip = document.createElement('span');
+        chip.className = 'inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono text-xs border border-indigo-500/30';
+        chip.innerHTML = `<span>${num}</span><button onclick="toggleNumberSelection('${num}')" class="ml-1 hover:text-white">&times;</button>`;
+        chipsContainer.appendChild(chip);
+      });
+    }
+
+    /* ==========================================================================
+       CLIENT RESERVATION SUBMISSION
+       ========================================================================== */
+    function openReservationModal() {
+      if (appData.selected.length === 0) return;
+      document.getElementById('modalSelectedNumbersList').innerText = appData.selected.join(', ');
+      document.getElementById('modalSelectedTotal').innerText = `$${calculateTotalPrice(appData.selected.length).toLocaleString()}`;
+      document.getElementById('modalHoldMinutes').innerText = appData.config.holdMinutes;
+      document.getElementById('reservationModal').classList.remove('hidden');
+    }
+
+    function closeReservationModal() {
+      document.getElementById('reservationModal').classList.add('hidden');
+    }
+
+    function handleReservationSubmit(event) {
+      event.preventDefault();
+      const name = document.getElementById('custName').value.trim();
+      const dni = document.getElementById('custDNI').value.trim();
+      const phone = document.getElementById('custPhone').value.trim();
+
+      if (!name || !dni || !phone) return;
+
+      appData.selected.forEach(numStr => {
+        appData.numbers[numStr] = {
+          status: 'RESERVED',
+          updatedAt: new Date().toISOString(),
+          customer: { name, dni, phone }
+        };
+      });
+
+      saveDataToStorage();
+
+      const total = calculateTotalPrice(appData.selected.length);
+      const textMessage = `👋 *NUEVA RESERVA DE NUMEROS*\n\n` +
+                          `👤 *Cliente:* ${name}\n` +
+                          `🪪 *DNI:* ${dni}\n` +
+                          `📱 *Teléfono:* ${phone}\n\n` +
+                          `🎟️ *Números Solicitados (${appData.selected.length}):* ${appData.selected.join(', ')}\n` +
+                          `💵 *Total:* $${total.toLocaleString()}\n\n` +
+                          `Por favor enviame los datos de pago para confirmar. ¡Muchas gracias!`;
+
+      const whatsappUrl = `https://wa.me/${appData.config.whatsappPhone}?text=${encodeURIComponent(textMessage)}`;
+
+      appData.selected = [];
+      updateFloatingBanner();
+      closeReservationModal();
+      renderGrid();
+      updateStatsUI();
+
+      window.open(whatsappUrl, '_blank');
+    }
+
+    /* ==========================================================================
+       ADMIN SALES TABLE & ACTIONS
+       ========================================================================== */
+    function renderSalesTable() {
+      const tbody = document.getElementById('admSalesTableBody');
+      const term = (document.getElementById('admSalesSearch')?.value || '').toLowerCase();
+      tbody.innerHTML = '';
+
+      // Group numbers by customer DNI/Phone
+      const groups = {};
+      Object.entries(appData.numbers).forEach(([numStr, item]) => {
+        if (item.status !== 'FREE' && item.customer) {
+          const key = `${item.customer.dni}_${item.status}`;
+          if (!groups[key]) {
+            groups[key] = {
+              status: item.status,
+              customer: item.customer,
+              numbers: [],
+              updatedAt: item.updatedAt
+            };
+          }
+          groups[key].numbers.push(numStr);
+        }
+      });
+
+      Object.values(groups).forEach(group => {
+        const c = group.customer;
+        const numsText = group.numbers.join(', ');
+        if (term && !c.name.toLowerCase().includes(term) && !c.dni.includes(term) && !c.phone.includes(term) && !numsText.includes(term)) {
+          return;
+        }
+
+        const total = calculateTotalPrice(group.numbers.length);
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/40 transition';
+
+        tr.innerHTML = `
+          <td class="px-4 py-3 font-mono font-bold text-brand-400 max-w-[150px] truncate">${numsText}</td>
+          <td class="px-4 py-3 font-medium text-white">${c.name}</td>
+          <td class="px-4 py-3 text-slate-400">${c.dni} <br><span class="text-[10px] text-slate-500">${c.phone}</span></td>
+          <td class="px-4 py-3 font-bold text-emerald-400">$${total.toLocaleString()}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              group.status === 'SOLD' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'
+            }">${group.status}</span>
+          </td>
+          <td class="px-4 py-3 space-x-1">
+            ${group.status === 'RESERVED' ? `
+              <button onclick="confirmCustomerPaymentTriple('${c.dni}', [${group.numbers.map(n=>`'${n}'`)}])" class="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded text-[10px] font-bold">
+                Confirmar Pago
+              </button>
+            ` : ''}
+            <button onclick="releaseCustomerReservationTriple([${group.numbers.map(n=>`'${n}'`)}])" class="px-2 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 rounded text-[10px] font-bold">
+              Liberar
+            </button>
+            <button onclick="printTicketForGroup('${c.name}', '${c.dni}', '${c.phone}', [${group.numbers.map(n=>`'${n}'`)}], ${total})" class="px-2 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 rounded text-[10px] font-bold">
+              Ticket
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function confirmCustomerPaymentTriple(dni, numbersList) {
+      executeTripleSafetyCheck(`confirmar el PAGO de los números: ${numbersList.join(', ')}`, () => {
+        numbersList.forEach(numStr => {
+          if (appData.numbers[numStr]) {
+            appData.numbers[numStr].status = 'SOLD';
+          }
+        });
+        saveDataToStorage();
+        renderGrid();
+        updateStatsUI();
+        renderSalesTable();
+      });
+    }
+
+    function releaseCustomerReservationTriple(numbersList) {
+      executeTripleSafetyCheck(`LIBERAR y poner en VERDE los números: ${numbersList.join(', ')}`, () => {
+        numbersList.forEach(numStr => {
+          if (appData.numbers[numStr]) {
+            appData.numbers[numStr].status = 'FREE';
+            appData.numbers[numStr].customer = null;
+          }
+        });
+        saveDataToStorage();
+        renderGrid();
+        updateStatsUI();
+        renderSalesTable();
+      });
+    }
+
+    function clearExpiredReservationsWithConfirmation() {
+      const now = new Date();
+      const holdMs = appData.config.holdMinutes * 60 * 1000;
+      const expiredNumbers = [];
+
+      Object.entries(appData.numbers).forEach(([numStr, item]) => {
+        if (item.status === 'RESERVED' && item.updatedAt) {
+          const updatedTime = new Date(item.updatedAt).getTime();
+          if (now.getTime() - updatedTime > holdMs) {
+            expiredNumbers.push(numStr);
+          }
+        }
+      });
+
+      if (expiredNumbers.length === 0) {
+        showAlert("No hay reservas vencidas en este momento.", "Información");
+        return;
+      }
+
+      executeTripleSafetyCheck(`LIBERAR AUTOMÁTICAMENTE ${expiredNumbers.length} reservas vencidas`, () => {
+        expiredNumbers.forEach(numStr => {
+          appData.numbers[numStr].status = 'FREE';
+          appData.numbers[numStr].customer = null;
+        });
+        saveDataToStorage();
+        renderGrid();
+        updateStatsUI();
+        renderSalesTable();
+        showAlert(`Se liberaron ${expiredNumbers.length} números con éxito.`, "Operación Exitosa");
+      });
+    }
+
+    /* ==========================================================================
+       QUICK BATCH MANUAL ASSIGNMENT
+       ========================================================================== */
+    function executeQuickBatchChange(targetStatus) {
+      const input = document.getElementById('quickAssignInput').value.trim();
+      if (!input) return;
+
+      const numbersToProcess = new Set();
+      const parts = input.split(',');
+
+      parts.forEach(part => {
+        const trimmed = part.trim();
+        if (trimmed.includes('-')) {
+          const [start, end] = trimmed.split('-').map(n => parseInt(n.trim()));
+          if (!isNaN(start) && !isNaN(end)) {
+            for (let i = start; i <= end; i++) {
+              numbersToProcess.add(String(i).padStart(4, '0'));
+            }
+          }
+        } else if (trimmed) {
+          numbersToProcess.add(trimmed.padStart(4, '0'));
+        }
+      });
+
+      const list = Array.from(numbersToProcess);
+      if (list.length === 0) return;
+
+      executeTripleSafetyCheck(`cambiar manualmente el estado de ${list.length} números a ${targetStatus}`, () => {
+        list.forEach(numStr => {
+          if (appData.numbers[numStr]) {
+            appData.numbers[numStr].status = targetStatus;
+            if (targetStatus === 'FREE') appData.numbers[numStr].customer = null;
+            else if (!appData.numbers[numStr].customer) {
+              appData.numbers[numStr].customer = { name: 'Asignación Manual Admin', dni: '000', phone: '-' };
+            }
+          }
+        });
+        saveDataToStorage();
+        renderGrid();
+        updateStatsUI();
+        renderSalesTable();
+        showAlert("Modificación manual completada con éxito.", "Éxito");
+      });
+    }
+
+    /* ==========================================================================
+       EXCEL EXPORT (.XLSX WITH SHEETJS)
+       ========================================================================== */
+    function exportToExcelXLSX() {
+      const dataRows = [];
+      Object.entries(appData.numbers).forEach(([numStr, item]) => {
+        const c = item.customer || {};
+        dataRows.push({
+          "Número": numStr,
+          "Estado": item.status,
+          "Cliente": c.name || '',
+          "DNI": c.dni || '',
+          "Teléfono": c.phone || '',
+          "Fecha": item.updatedAt ? new Date(item.updatedAt).toLocaleString() : ''
+        });
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(dataRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Ventas Sorteo");
+      
+      XLSX.writeFile(workbook, `Sorteo_Reporte_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    function exportBackupJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `backup_sorteo_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function restoreBackupFromFile() {
+      const fileInput = document.getElementById('restoreFileInput');
+      if (!fileInput.files || fileInput.files.length === 0) return;
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed.config && parsed.numbers) {
+            executeTripleSafetyCheck("SOBREESCRIBIR toda la base de datos con este archivo de backup", () => {
+              appData = parsed;
+              saveDataToStorage();
+              renderAppHeader();
+              renderGrid();
+              updateStatsUI();
+              renderSalesTable();
+              showAlert("Base de datos restaurada correctamente.", "Éxito");
+            });
+          }
+        } catch (err) {
+          showAlert("Archivo de backup inválido.", "Error");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    /* ==========================================================================
+       PRINT TICKET GENERATOR
+       ========================================================================== */
+    function printTicketForGroup(name, dni, phone, nums, total) {
+      document.getElementById('tktRaffleTitle').innerText = appData.config.title;
+      document.getElementById('tktClientName').innerText = name;
+      document.getElementById('tktClientDNI').innerText = dni;
+      document.getElementById('tktClientPhone').innerText = phone;
+      document.getElementById('tktDate').innerText = new Date().toLocaleString();
+      document.getElementById('tktNumbers').innerText = nums.join(', ');
+      document.getElementById('tktTotal').innerText = `$${total.toLocaleString()}`;
+
+      window.print();
+    }
+
+    /* ==========================================================================
+       ADMIN AUTH & SETTINGS CONTROLLER
+       ========================================================================== */
+    function toggleAdminModal(show) {
+      const modal = document.getElementById('adminModal');
+      if (show) {
+        modal.classList.remove('hidden');
+        if (!isAdminAuthenticated) {
+          document.getElementById('adminAuthScreen').classList.remove('hidden');
+          document.getElementById('adminContent').classList.add('hidden');
+        } else {
+          document.getElementById('adminAuthScreen').classList.add('hidden');
+          document.getElementById('adminContent').classList.remove('hidden');
+          renderSalesTable();
+        }
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function authenticateAdmin(e) {
+      e.preventDefault();
+      const pass = document.getElementById('adminPasswordInput').value;
+      if (pass === appData.config.adminPass) {
+        isAdminAuthenticated = true;
+        document.getElementById('adminAuthScreen').classList.add('hidden');
+        document.getElementById('adminContent').classList.remove('hidden');
+        
+        // Populate settings form
+        document.getElementById('cfgTitle').value = appData.config.title;
+        document.getElementById('cfgLogoUrl').value = appData.config.logoUrl;
+        document.getElementById('cfgTotalCount').value = appData.config.totalNumbers;
+        document.getElementById('cfgHoldMinutes').value = appData.config.holdMinutes;
+        document.getElementById('cfgPhone').value = appData.config.whatsappPhone;
+        renderPricingTiersList();
+        renderSalesTable();
+      } else {
+        document.getElementById('adminAuthError').classList.remove('hidden');
+      }
+    }
+
+    function switchAdminTab(tabName) {
+      ['Dashboard', 'Prizes', 'Sales', 'Quick', 'Settings', 'Security'].forEach(t => {
+        const el = document.getElementById(`adminTab${t}`);
+        if (el) el.classList.add('hidden');
+        const btn = document.getElementById(`tabBtn${t}`);
+        if (btn) {
+          btn.classList.remove('border-brand-500', 'text-brand-400');
+          btn.classList.add('border-transparent', 'text-slate-400');
+        }
+      });
+
+      const cap = tabName.charAt(0).toUpperCase() + tabName.slice(1);
+      const targetTab = document.getElementById(`adminTab${cap}`);
+      if (targetTab) targetTab.classList.remove('hidden');
+
+      const activeBtn = document.getElementById(`tabBtn${cap}`);
+      if (activeBtn) {
+        activeBtn.classList.add('border-brand-500', 'text-brand-400');
+      }
+
+      if (tabName === 'sales') renderSalesTable();
+      if (tabName === 'prizes') renderPrizesShowcase();
+    }
+
+    function changeAdminPassword(e) {
+      e.preventDefault();
+      const newPass = document.getElementById('newAdminPassword').value.trim();
+      if (!newPass) return;
+      appData.config.adminPass = newPass;
+      saveDataToStorage();
+      showAlert("Contraseña modificada con éxito.", "Seguridad");
+    }
+
+    function renderPricingTiersList() {
+      const container = document.getElementById('cfgTiersList');
+      container.innerHTML = '';
+      appData.config.tiers.forEach((tier, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center space-x-2';
+        row.innerHTML = `
+          <input type="number" value="${tier.qty}" min="1" onchange="updateTierValue(${idx}, 'qty', this.value)" class="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-white text-xs">
+          <span class="text-slate-400">Nº por</span>
+          <span class="text-slate-400">$</span>
+          <input type="number" value="${tier.price}" min="1" onchange="updateTierValue(${idx}, 'price', this.value)" class="w-28 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-white text-xs">
+          <button type="button" onclick="removePricingTierRow(${idx})" class="text-rose-400 hover:text-rose-300 p-1"><i class="fa-solid fa-trash"></i></button>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function updateTierValue(idx, key, val) {
+      appData.config.tiers[idx][key] = parseInt(val) || 0;
+    }
+
+    function addPricingTierRow() {
+      appData.config.tiers.push({ qty: 1, price: 10 });
+      renderPricingTiersList();
+    }
+
+    function removePricingTierRow(idx) {
+      if (appData.config.tiers.length <= 1) return;
+      appData.config.tiers.splice(idx, 1);
+      renderPricingTiersList();
+    }
+
+    function saveRaffleSettingsWithConfirmation(event) {
+      event.preventDefault();
+      executeTripleSafetyCheck("GUARDAR la nueva configuración del sorteo", () => {
+        appData.config.title = document.getElementById('cfgTitle').value;
+        appData.config.logoUrl = document.getElementById('cfgLogoUrl').value;
+        appData.config.totalNumbers = parseInt(document.getElementById('cfgTotalCount').value);
+        appData.config.holdMinutes = parseInt(document.getElementById('cfgHoldMinutes').value);
+        appData.config.whatsappPhone = document.getElementById('cfgPhone').value;
+
+        initializeNumbersDict();
+        saveDataToStorage();
+        renderAppHeader();
+        renderGrid();
+        updateStatsUI();
+        showAlert("Configuración actualizada correctamente.", "Éxito");
+      });
+    }
+
+    function generateAdminQR() {
+      const qrContainer = document.getElementById("qrcodeCanvas");
+      qrContainer.innerHTML = "";
+      new QRCode(qrContainer, {
+        text: window.location.href,
+        width: 120,
+        height: 120,
+        colorDark : "#0f172a",
+        colorLight : "#ffffff"
+      });
+    }
+
+    function downloadQRCode() {
+      const img = document.querySelector("#qrcodeCanvas img");
+      if (img) {
+        const link = document.createElement('a');
+        link.download = 'qr_sorteo.png';
+        link.href = img.src;
+        link.click();
+      }
+    }
+
+    /* ==========================================================================
+       HELPERS & EVENT LISTENERS
+       ========================================================================== */
+    function setFilter(filter) {
+      currentFilter = filter;
+      currentPage = 1;
+      ['All', 'Free', 'Reserved', 'Sold'].forEach(f => {
+        const btn = document.getElementById(`filterBtn${f}`);
+        if (filter === f.toUpperCase()) {
+          btn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-200 bg-slate-800 shadow transition';
+        } else {
+          btn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-slate-200 transition';
+        }
+      });
+      renderGrid();
+    }
+
+    function setupEventListeners() {
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        searchQuery = e.target.value.trim();
+        currentPage = 1;
+        renderGrid();
+      });
+    }
+
+    function resetFilters() {
+      currentFilter = 'ALL';
+      searchQuery = '';
+      document.getElementById('searchInput').value = '';
+      setFilter('ALL');
+    }
+
+    function changePage(delta) {
+      currentPage += delta;
+      renderGrid();
+      document.getElementById('gridContainer').scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>
