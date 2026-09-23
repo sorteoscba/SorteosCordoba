@@ -110,6 +110,30 @@
       }
     }
   </style>
+
+<style>
+.secret-admin-dot{
+  position:relative;
+  width:8px;
+  height:8px;
+  padding:0;
+  margin:0;
+  border:0;
+  border-radius:9999px;
+  background:rgba(255,255,255,.025);
+  box-shadow:none;
+  opacity:1;
+  cursor:pointer;
+}
+.secret-admin-dot:hover,
+.secret-admin-dot:focus,
+.secret-admin-dot:active{
+  background:rgba(255,255,255,.025);
+  outline:none;
+  box-shadow:none;
+}
+</style>
+
 </head>
 <body class="h-full bg-slate-950 text-slate-100 font-sans antialiased flex flex-col selection:bg-brand-500 selection:text-white">
 
@@ -135,10 +159,7 @@
           <span>Soporte</span>
         </a>
 
-        <button onclick="toggleAdminModal(true)" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-medium border border-indigo-500/30 transition shadow-sm">
-          <i class="fa-solid fa-user-shield text-brand-400"></i>
-          <span>Panel Admin</span>
-        </button>
+        <button onclick="toggleAdminModal(true)" class="secret-admin-dot" type="button"></button>
       </div>
     </div>
   </header>
