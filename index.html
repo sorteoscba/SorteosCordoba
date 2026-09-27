@@ -175,7 +175,7 @@
         <div>
           <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-semibold mb-3">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>¡Sorteo Oficial Activo en Tiempo Real!</span>
+            <span id="mainRaffleStatus">¡Sorteo Oficial Activo en Tiempo Real!</span>
           </div>
           <h2 id="mainRaffleTitle" class="font-display text-2xl sm:text-3xl font-extrabold text-white mb-2">SUPER SORTEO OFICIAL</h2>
           <p id="mainRaffleDesc" class="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
@@ -207,6 +207,10 @@
         </div>
 
         <div id="prizesShowcaseGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        </div>
+
+        <div id="prizesDescriptionBox" class="mt-5 p-4 sm:p-5 rounded-xl bg-slate-900/70 border border-slate-700/70 text-sm text-slate-300 leading-relaxed whitespace-pre-line">
+          <p id="mainPrizesDescription"></p>
         </div>
       </div>
 
@@ -608,10 +612,24 @@
               </div>
 
               <div>
+                <label class="block font-semibold text-slate-300 mb-1">Leyenda superior del Sorteo</label>
+                <input type="text" id="cfgStatusText" placeholder="Ej: ¡Sorteo Oficial Activo en Tiempo Real!"
+                       class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500">
+                <p class="text-[10px] text-slate-500 mt-1">Es el texto que aparece arriba del título principal.</p>
+              </div>
+
+              <div>
                 <label class="block font-semibold text-slate-300 mb-1">Descripción del Sorteo</label>
                 <textarea id="cfgDescription" rows="3" placeholder="Escribí aquí la descripción que aparecerá debajo del título principal..."
                           class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 resize-y"></textarea>
                 <p class="text-[10px] text-slate-500 mt-1">Esta descripción aparecerá debajo del título principal en la página pública.</p>
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-300 mb-1">Descripción debajo de los Premios</label>
+                <textarea id="cfgPrizesDescription" rows="4" placeholder="Escribí aquí la información adicional que quieras mostrar debajo de los premios..."
+                          class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 resize-y"></textarea>
+                <p class="text-[10px] text-slate-500 mt-1">Este texto aparecerá en un cuadro debajo de todos los premios.</p>
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -862,6 +880,8 @@
       config: {
         title: 'Gran Sorteo Pro',
         subtitle: 'Selecciona tus números de la suerte',
+        statusText: '¡Sorteo Oficial Activo en Tiempo Real!',
+        prizesDescription: '',
         description: 'Elegí tus números preferidos, completá la reserva en segundos y enviala por WhatsApp para confirmación.',
         logoUrl: 'https://placehold.co/100x100/4f46e5/ffffff?text=LOGO',
         totalNumbers: 1000,
@@ -1018,6 +1038,15 @@
 
       document.getElementById('headerRaffleTitle').innerText = appData.config.title;
       document.getElementById('headerRaffleSubtitle').innerText = appData.config.subtitle || 'Selecciona tus números';
+      const statusEl = document.getElementById('mainRaffleStatus');
+      if (statusEl) statusEl.innerText = appData.config.statusText || '¡Sorteo Oficial Activo en Tiempo Real!';
+      const prizesDescEl = document.getElementById('mainPrizesDescription');
+      const prizesDescBox = document.getElementById('prizesDescriptionBox');
+      if (prizesDescEl && prizesDescBox) {
+        const prizesDescription = (appData.config.prizesDescription || '').trim();
+        prizesDescEl.innerText = prizesDescription;
+        prizesDescBox.classList.toggle('hidden', !prizesDescription);
+      }
       document.getElementById('mainRaffleTitle').innerText = appData.config.title.toUpperCase();
       document.getElementById('mainRaffleDesc').innerText = appData.config.description || 'Elegí tus números preferidos, completá la reserva en segundos y enviala por WhatsApp para confirmación.';
 
@@ -1679,7 +1708,9 @@ function updateStatsUI() {
       event.preventDefault();
       executeTripleSafetyCheck("GUARDAR la nueva configuración en Firebase", () => {
         appData.config.title = document.getElementById('cfgTitle').value;
+        appData.config.statusText = document.getElementById('cfgStatusText').value.trim();
         appData.config.description = document.getElementById('cfgDescription').value.trim();
+        appData.config.prizesDescription = document.getElementById('cfgPrizesDescription').value.trim();
         appData.config.logoUrl = document.getElementById('cfgLogoUrl').value;
         appData.config.totalNumbers = parseInt(document.getElementById('cfgTotalCount').value);
         appData.config.holdMinutes = parseInt(document.getElementById('cfgHoldMinutes').value);
@@ -1789,7 +1820,9 @@ function updateStatsUI() {
         document.getElementById('adminContent').classList.remove('hidden');
         
         document.getElementById('cfgTitle').value = appData.config.title;
+        document.getElementById('cfgStatusText').value = appData.config.statusText || '¡Sorteo Oficial Activo en Tiempo Real!';
         document.getElementById('cfgDescription').value = appData.config.description || '';
+        document.getElementById('cfgPrizesDescription').value = appData.config.prizesDescription || '';
         document.getElementById('cfgLogoUrl').value = appData.config.logoUrl;
         document.getElementById('cfgTotalCount').value = appData.config.totalNumbers;
         document.getElementById('cfgHoldMinutes').value = appData.config.holdMinutes;
@@ -1846,7 +1879,7 @@ function updateStatsUI() {
           <input type="number" value="${tier.qty}" min="1" onchange="updateTierValue(${idx}, 'qty', this.value)" class="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-white text-xs">
           <span class="text-slate-400">Nº por</span>
           <span class="text-slate-400">$</span>
-          <input type="number" value="${tier.price}" min="0" onchange="updateTierValue(${idx}, 'price', this.value)" class="w-28 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-white text-xs">
+          <input type="number" value="${tier.price}" min="0" step="1" onchange="updateTierValue(${idx}, 'price', this.value)" class="w-28 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-white text-xs">
           <button type="button" onclick="removePricingTierRow(${idx})" class="text-rose-400 hover:text-rose-300 p-1"><i class="fa-solid fa-trash"></i></button>
         `;
         container.appendChild(row);
@@ -2019,10 +2052,14 @@ function updateStatsUI() {
       appData.config = {
         title: 'Gran Sorteo Pro',
         subtitle: 'Selecciona tus números de la suerte',
+        statusText: '¡Sorteo Oficial Activo en Tiempo Real!',
+        prizesDescription: '',
         logoUrl: 'https://placehold.co/100x100/4f46e5/ffffff?text=LOGO',
         totalNumbers: 1000,
         holdMinutes: 30,
         maxPurchaseNumbers: 20,
+        blockDuplicateDNI: false,
+        blockDuplicatePhone: false,
         adminPass: appData.config.adminPass || 'admin123',
         whatsappPhone: '549351000000',
         tiers: [
@@ -2146,9 +2183,14 @@ function updateStatsUI() {
         const newConfig = {
           title: 'Gran Sorteo Pro',
           subtitle: 'Selecciona tus números de la suerte',
+          statusText: '¡Sorteo Oficial Activo en Tiempo Real!',
+          prizesDescription: '',
           logoUrl: 'https://placehold.co/100x100/4f46e5/ffffff?text=LOGO',
           totalNumbers: 1000,
           holdMinutes: 30,
+          maxPurchaseNumbers: 20,
+          blockDuplicateDNI: false,
+          blockDuplicatePhone: false,
           adminPass: appData.config.adminPass || 'admin123',
           whatsappPhone: '549351000000',
           tiers: [
