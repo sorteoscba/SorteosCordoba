@@ -1947,30 +1947,43 @@ function updateStatsUI() {
     }
 
 
-    function exportCurrentRaffleCompleteXLSX() {
-      const workbook = XLSX.utils.book_new();
+    async function exportRaffleBackupBeforeDeletion() {
+      // Obtener una fotografía FRESCA directamente desde Firebase justo antes del borrado.
+      const [settingsDoc, numbersSnapshot, participantsSnapshot] = await Promise.all([
+        db.collection("settings").doc("main").get(),
+        db.collection("numeros").get(),
+        db.collection("participantes").get()
+      ]);
 
-      // HOJA 1: todos los números y su estado actual
-      const numberRows = Object.entries(appData.numbers)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([numStr, item]) => {
-          const c = item.customer || {};
+      const settingsData = settingsDoc.exists ? settingsDoc.data() : {};
+      const backupConfig = settingsData.config || appData.config || {};
+      const backupPrizes = settingsData.prizes || appData.prizes || [];
+      const numberDocs = numbersSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+      const participantDocs = participantsSnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+
+      const workbook = XLSX.utils.book_new();
+      const exportedAt = new Date();
+
+      // HOJA 1: todos los números almacenados en Firebase, incluyendo los campos completos.
+      const numberRows = numberDocs
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map(({ id, data }) => {
+          const c = data.customer || {};
           return {
-            "Número": numStr,
-            "Estado": item.status || "FREE",
+            "ID Número": id,
+            "Estado": data.status || "FREE",
             "Cliente": c.name || "",
             "DNI": c.dni || "",
             "Teléfono": c.phone || "",
-            "Fecha actualización": item.updatedAt ? new Date(item.updatedAt).toLocaleString() : ""
+            "Fecha actualización": data.updatedAt ? new Date(data.updatedAt).toLocaleString() : "",
+            "Datos completos": JSON.stringify(data)
           };
         });
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(numberRows), "Números");
 
-      const numbersSheet = XLSX.utils.json_to_sheet(numberRows);
-      XLSX.utils.book_append_sheet(workbook, numbersSheet, "Números");
-
-      // HOJA 2: ventas y reservas agrupadas por cliente
+      // HOJA 2: ventas y reservas agrupadas por cliente.
       const groups = {};
-      Object.entries(appData.numbers).forEach(([numStr, item]) => {
+      numberDocs.forEach(({ id: numStr, data: item }) => {
         if (item.status !== "FREE" && item.customer) {
           const c = item.customer || {};
           const key = `${c.dni || ""}_${c.phone || ""}_${item.status || ""}`;
@@ -1987,7 +2000,6 @@ function updateStatsUI() {
           groups[key].numbers.push(numStr);
         }
       });
-
       const salesRows = Object.values(groups).map(group => ({
         "Estado": group.status,
         "Cliente": group.name,
@@ -2000,17 +2012,18 @@ function updateStatsUI() {
       }));
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(salesRows), "Ventas y Clientes");
 
-      // HOJA 3: premios
-      const prizeRows = (appData.prizes || []).map(p => ({
+      // HOJA 3: premios.
+      const prizeRows = backupPrizes.map(p => ({
         "Puesto": p.place || "",
         "Premio": p.title || "",
         "Descripción": p.desc || "",
-        "Imagen": p.imageUrl || ""
+        "Imagen": p.imageUrl || "",
+        "Datos completos": JSON.stringify(p)
       }));
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(prizeRows), "Premios");
 
-      // HOJA 4: configuración del sorteo
-      const configRows = Object.entries(appData.config || {}).map(([key, value]) => ({
+      // HOJA 4: configuración completa.
+      const configRows = Object.entries(backupConfig).map(([key, value]) => ({
         "Campo": key,
         "Valor": Array.isArray(value) || (value && typeof value === "object")
           ? JSON.stringify(value)
@@ -2018,8 +2031,43 @@ function updateStatsUI() {
       }));
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(configRows), "Configuración");
 
-      const date = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(workbook, `Sorteo_Completo_${date}.xlsx`);
+      // HOJA 5: participantes, incluyendo los identificadores usados para bloquear duplicados.
+      const participantRows = participantDocs
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map(({ id, data }) => ({
+          "ID Participante": id,
+          "Nombre": data.name || "",
+          "DNI": data.dni || "",
+          "Teléfono": data.phone || "",
+          "DNI normalizado": data.dniNormalized || "",
+          "Teléfono normalizado": data.phoneNormalized || "",
+          "Primera reserva": data.firstReservationAt ? new Date(data.firstReservationAt).toLocaleString() : "",
+          "Datos completos": JSON.stringify(data)
+        }));
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(participantRows), "Participantes");
+
+      // HOJA 6: información del respaldo.
+      const metadataRows = [{
+        "Fecha y hora del respaldo": exportedAt.toLocaleString(),
+        "Título del sorteo": backupConfig.title || "",
+        "Números en Firebase": numberDocs.length,
+        "Participantes en Firebase": participantDocs.length,
+        "Premios": backupPrizes.length,
+        "Documento de configuración": settingsDoc.exists ? "settings/main" : "No encontrado"
+      }];
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(metadataRows), "Respaldo");
+
+      XLSX.writeFile(
+        workbook,
+        `BACKUP_Sorteo_Completo_${exportedAt.toISOString().replace(/[:.]/g, '-').slice(0,19)}.xlsx`
+      );
+    }
+
+    function exportCurrentRaffleCompleteXLSX() {
+      exportRaffleBackupBeforeDeletion().catch(error => {
+        console.error("Error exportando respaldo completo:", error);
+        showAlert("No se pudo generar el Excel completo. Verificá la conexión e intentá nuevamente.", "Error de exportación");
+      });
     }
 
     function exportCurrentRaffleSalesXLSX() {
@@ -2091,6 +2139,17 @@ function updateStatsUI() {
     }
 
     async function deleteCurrentRaffleWithTripleConfirmation() {
+      // El respaldo es OBLIGATORIO antes de mostrar siquiera la primera confirmación.
+      // Si el Excel no puede generarse, no se permite continuar con el borrado.
+      try {
+        await exportRaffleBackupBeforeDeletion();
+        showAlert("Respaldo Excel generado correctamente. Ahora podés continuar con las 3 confirmaciones de seguridad.", "Respaldo creado");
+      } catch (error) {
+        console.error("No se pudo crear el respaldo antes de anular el sorteo:", error);
+        showAlert("NO se inició la anulación porque no se pudo generar el respaldo Excel completo. No se borró ningún dato. Verificá la conexión y volvé a intentarlo.", "Anulación detenida");
+        return;
+      }
+
       let currentStep = 1;
       const modal = document.getElementById('customConfirmModal');
       const stepIcon = document.getElementById('confirmStepIcon');
@@ -2175,20 +2234,30 @@ function updateStatsUI() {
     async function performCurrentRaffleDeletion() {
       try {
         // Firestore permite como máximo 500 operaciones por batch.
-        const docs = await db.collection("numeros").get();
+        // Se eliminan tanto los números como los participantes del sorteo.
+        const [numberDocs, participantDocs] = await Promise.all([
+          db.collection("numeros").get(),
+          db.collection("participantes").get()
+        ]);
+
         let batch = db.batch();
         let operationCount = 0;
 
-        for (const doc of docs.docs) {
-          batch.delete(doc.ref);
-          operationCount++;
+        const deleteDocsInBatches = async (snapshot) => {
+          for (const doc of snapshot.docs) {
+            batch.delete(doc.ref);
+            operationCount++;
 
-          if (operationCount === 450) {
-            await batch.commit();
-            batch = db.batch();
-            operationCount = 0;
+            if (operationCount === 450) {
+              await batch.commit();
+              batch = db.batch();
+              operationCount = 0;
+            }
           }
-        }
+        };
+
+        await deleteDocsInBatches(numberDocs);
+        await deleteDocsInBatches(participantDocs);
 
         if (operationCount > 0) {
           await batch.commit();
